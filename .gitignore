@@ -7,3 +7,4 @@ __pycache__/
 data/*.db
 data/*.csv
 !data/.gitkeep
+data/*.parquet

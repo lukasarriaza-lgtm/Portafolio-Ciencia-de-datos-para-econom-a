@@ -60,10 +60,10 @@ SERIES_BCCH = [
     ("F068.A.FLU.Z.0.S.N.Z.Z.Z.Z.6.0.T", "Cuenta corriente", "Q", "millones USD", 5),
 
     # Más exportaciones netas aumentan la oferta de dólares (-)
-    ("F068.B1.VAR.T0.0.S.N.Z.Z.Z.Z.6.0.M", "Balanza comercial", "M", "verificar en la BDE", 5),
+    ("F068.B1.VAR.T0.0.S.N.Z.Z.Z.Z.6.0.M", "Balanza comercial", "M", "millones USD", 5),
 
     # Balance de portafolio: entradas de inversión directa demandan pesos (-)
-    ("F068.T6.STO.Z.IED.S.P.Z.T.Z.Z.6.0.M", "Inversión extranjera directa", "M", "verificar en la BDE", 5),
+    ("F068.G1.FLU.Z.0.S.P.Z.T.Z.Z.6.0.M", "Inversión extranjera directa, pasivos (flujo)", "M", "millones USD", 5),
 
     # Con los gastos forma el balance fiscal: un déficit persistente resta credibilidad (+)
     ("F051.BT02.FLU.C.D.CLP.M", "Ingresos totales Gobierno Central", "M", "millones CLP", 7),

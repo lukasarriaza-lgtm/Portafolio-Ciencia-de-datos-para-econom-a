@@ -82,31 +82,61 @@ ORDER BY s.nombre, mes;
 -- (PARTITION BY) y en orden temporal (ORDER BY mes).
 --   - Tasas (% anual): diferencia en puntos porcentuales.
 --   - Resto: variación porcentual.
--- Supuesto: la serie no tiene meses faltantes (ver consulta 2), porque
--- LAG(valor, 12) retrocede 12 filas, no 12 meses.
+-- Control de huecos: LAG(valor, 12) retrocede 12 FILAS, no 12 meses.
+-- Si a una serie le falta un mes (por ejemplo, el IPC de EE.UU. no tiene
+-- octubre de 2025), 12 filas atrás serían 13 meses atrás y se compararían
+-- meses equivocados durante todo un año. Para evitarlo, antes del LAG se
+-- arma un calendario completo de meses para cada serie (bloque calendario)
+-- y el mes faltante queda como una fila vacía. Así 12 filas atrás son
+-- siempre 12 meses atrás, y solo quedan sin cambio el mes faltante y el
+-- mes que debería compararse con él.
 -- ------------------------------------------------------------
-WITH mensual AS (
+WITH RECURSIVE mensual AS (
     SELECT o.id_serie,
            strftime('%Y-%m-01', o.fecha) AS mes,
            AVG(o.valor)                  AS valor
     FROM observaciones AS o
+    JOIN series AS s ON s.id_serie = o.id_serie
+    WHERE s.frecuencia IN ('D', 'M')                -- la trimestral queda fuera
     GROUP BY o.id_serie, mes
+),
+limites AS (                                        -- primer y último mes de cada serie
+    SELECT id_serie, MIN(mes) AS inicio, MAX(mes) AS fin
+    FROM mensual
+    GROUP BY id_serie
+),
+calendario (id_serie, mes, fin) AS (                -- todos los meses entre inicio y fin
+    SELECT id_serie, inicio, fin FROM limites
+    UNION ALL
+    SELECT id_serie, date(mes, '+1 month'), fin
+    FROM calendario
+    WHERE mes < fin
+),
+completa AS (                                       -- calendario + datos (vacío si falta el mes)
+    SELECT c.id_serie, c.mes, m.valor
+    FROM calendario AS c
+    LEFT JOIN mensual AS m ON m.id_serie = c.id_serie AND m.mes = c.mes
+),
+con_rezago AS (
+    SELECT id_serie,
+           mes,
+           valor,
+           LAG(valor, 12) OVER (PARTITION BY id_serie ORDER BY mes) AS valor_12
+    FROM completa
 )
 SELECT s.nombre,
        s.unidad,
-       m.mes,
-       ROUND(m.valor, 4) AS valor,
+       r.mes,
+       ROUND(r.valor, 4) AS valor,
        CASE
            WHEN s.unidad = '% anual'
-               THEN ROUND(m.valor - LAG(m.valor, 12) OVER (
-                        PARTITION BY m.id_serie ORDER BY m.mes), 2)
-           ELSE ROUND(100.0 * (m.valor / LAG(m.valor, 12) OVER (
-                        PARTITION BY m.id_serie ORDER BY m.mes) - 1), 2)
+               THEN ROUND(r.valor - r.valor_12, 2)              -- tasas: puntos porcentuales
+           ELSE ROUND(100.0 * (r.valor / r.valor_12 - 1), 2)    -- resto: variación %
        END AS cambio_12m
-FROM mensual AS m
-JOIN series AS s ON s.id_serie = m.id_serie
-WHERE s.frecuencia IN ('D', 'M')
-ORDER BY s.nombre, m.mes;
+FROM con_rezago AS r
+JOIN series AS s ON s.id_serie = r.id_serie
+WHERE r.valor IS NOT NULL                           -- no se muestran los meses faltantes
+ORDER BY s.nombre, r.mes;
 
 
 -- ------------------------------------------------------------
@@ -115,6 +145,15 @@ ORDER BY s.nombre, m.mes;
 -- Como los flujos fiscales son muy estacionales (diciembre concentra
 -- gasto), se agrega el balance acumulado en 12 meses.
 -- Unidad: millones de pesos nominales.
+--
+-- Desde 2012: en 2010 y 2011 la BDE entrega estas series solo en
+-- marzo, junio, septiembre y diciembre, y cada dato es el TOTAL del
+-- trimestre, no un mes. Mezclarlos con datos mensuales distorsiona la
+-- suma móvil (abril de 2012 sumaría totales trimestrales de 2011).
+--
+-- Control de huecos: la suma de 12 filas solo se informa si esas filas
+-- cubren exactamente 12 meses seguidos (la primera fila de la ventana
+-- es 11 meses antes del mes actual).
 -- ------------------------------------------------------------
 WITH fiscal AS (
     SELECT fecha,
@@ -122,6 +161,7 @@ WITH fiscal AS (
            SUM(CASE WHEN id_serie = 'F051.BT03.FLU.C.D.CLP.M' THEN valor END) AS gastos
     FROM observaciones
     WHERE id_serie IN ('F051.BT02.FLU.C.D.CLP.M', 'F051.BT03.FLU.C.D.CLP.M')
+      AND fecha >= '2012-01-01'                     -- solo datos mensuales
     GROUP BY fecha
     HAVING ingresos IS NOT NULL AND gastos IS NOT NULL
 )
@@ -129,13 +169,13 @@ SELECT fecha,
        ingresos,
        gastos,
        ingresos - gastos AS balance_mensual,
-       -- solo se calcula cuando hay 12 meses completos hacia atrás
        CASE
-           WHEN COUNT(*) OVER (ORDER BY fecha ROWS BETWEEN 11 PRECEDING AND CURRENT ROW) = 12
-               THEN SUM(ingresos - gastos) OVER (
-                        ORDER BY fecha ROWS BETWEEN 11 PRECEDING AND CURRENT ROW)
+           WHEN COUNT(*)   OVER w = 12
+            AND MIN(fecha) OVER w = date(fecha, '-11 months')
+               THEN SUM(ingresos - gastos) OVER w
        END AS balance_12m
 FROM fiscal
+WINDOW w AS (ORDER BY fecha ROWS BETWEEN 11 PRECEDING AND CURRENT ROW)
 ORDER BY fecha;
 
 

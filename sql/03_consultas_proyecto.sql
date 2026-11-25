@@ -81,6 +81,9 @@ ORDER BY s.nombre, mes;
 -- mes con el mismo mes del año anterior, DENTRO de cada serie
 -- (PARTITION BY) y en orden temporal (ORDER BY mes).
 --   - Tasas (% anual): diferencia en puntos porcentuales.
+--   - Flujos en millones de USD (balanza comercial, IED): diferencia
+--     en millones de USD, porque pueden ser negativos y una variación
+--     porcentual entre un valor negativo y uno positivo no tiene sentido.
 --   - Resto: variación porcentual.
 -- Control de huecos: LAG(valor, 12) retrocede 12 FILAS, no 12 meses.
 -- Si a una serie le falta un mes (por ejemplo, el IPC de EE.UU. no tiene
@@ -131,6 +134,8 @@ SELECT s.nombre,
        CASE
            WHEN s.unidad = '% anual'
                THEN ROUND(r.valor - r.valor_12, 2)              -- tasas: puntos porcentuales
+           WHEN s.unidad = 'millones USD'
+               THEN ROUND(r.valor - r.valor_12, 2)              -- flujos: millones de USD
            ELSE ROUND(100.0 * (r.valor / r.valor_12 - 1), 2)    -- resto: variación %
        END AS cambio_12m
 FROM con_rezago AS r

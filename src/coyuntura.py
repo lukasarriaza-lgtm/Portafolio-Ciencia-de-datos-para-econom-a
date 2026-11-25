@@ -6,6 +6,7 @@ de sql/04_consultas_coyuntura.sql (y la consulta 4 de 03_consultas_proyecto.sql)
     1. Lectura de datos desde SQL.
     2. El dólar frente a su historia (nivel, promedio y rango de 12 meses).
     3. Dólar nominal frente a dólar real (tipo de cambio real, TCR).
+    4. Variaciones y volatilidad del dólar.
 
 Los gráficos se guardan en figuras/ para usarlos en el informe.
 
@@ -58,10 +59,16 @@ def guardar(fig, nombre):
 # ------------------------------------------------------------
 engine = carga_db.obtener_engine()
 coyuntura = leer_consultas(config.RUTA_SQL / "04_consultas_coyuntura.sql")
+proyecto  = leer_consultas(config.RUTA_SQL / "03_consultas_proyecto.sql")
 
 with engine.connect() as conn:
     tcr   = pd.read_sql(text(coyuntura[0]), conn, parse_dates=["mes"], index_col="mes")   # consulta 7
     dolar = pd.read_sql(text(coyuntura[1]), conn, parse_dates=["mes"], index_col="mes")   # consulta 8
+    cambios = pd.read_sql(text(proyecto[3]), conn, parse_dates=["mes"])                    # consulta 4
+
+# Variación en 12 meses del dólar (consulta 4: variación % para el dólar)
+dolar["var_anual"] = (cambios[cambios["nombre"].str.startswith("Tipo de cambio")]
+                      .set_index("mes")["cambio_12m"])
 
 print(f"Dólar mensual: {dolar.index.min():%Y-%m} a {dolar.index.max():%Y-%m} ({len(dolar)} meses)")
 
@@ -146,3 +153,46 @@ print(f"  - TCR promedio histórico: {prom_tcr:.1f} (hoy {100 * (tcr_hoy / prom_
 print(f"  - Percentil del TCR:      {pct_tcr:.0f}")
 print(f"  - Máximo del TCR:         {tcr['tcr'].max():.1f} ({tcr['tcr'].idxmax():%Y-%m})")
 print(f"  - Mínimo del TCR:         {tcr['tcr'].min():.1f} ({tcr['tcr'].idxmin():%Y-%m})")
+
+
+# ------------------------------------------------------------
+# Bloque 4: variaciones y volatilidad del dólar
+# Variación anual: cuánto subió o bajó frente al mismo mes del año anterior
+# (consulta 4). Volatilidad: desviación estándar de la variación mensual
+# en los últimos 12 meses (consulta 8): mide cuánto se mueve el dólar,
+# no hacia dónde. Sube en episodios de estrés (2020 y 2022-2023).
+# ------------------------------------------------------------
+dolar["volatilidad_12m"] = dolar["var_mensual"].rolling(12).std()
+
+var_anual_hoy = dolar.loc[ultimo, "var_anual"]
+vol_hoy       = dolar.loc[ultimo, "volatilidad_12m"]
+vol_prom      = dolar["volatilidad_12m"].mean()
+pct_vol       = (dolar["volatilidad_12m"].dropna() <= vol_hoy).mean() * 100
+
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(11, 7), sharex=True)
+
+colores = [COLOR_UDP if v >= 0 else COLOR_TREND for v in dolar["var_anual"].fillna(0)]
+ax1.bar(dolar.index, dolar["var_anual"], width=25, color=colores)
+ax1.axhline(0, color="black", lw=0.8)
+ax1.set_title("Variación del dólar en 12 meses")
+ax1.set_ylabel("%")
+ax1.text(0.01, 0.92, "Rojo: el peso se deprecia. Azul: el peso se aprecia.",
+         transform=ax1.transAxes, fontsize=9, color=COLOR_GRAY)
+
+ax2.plot(dolar.index, dolar["volatilidad_12m"], color=COLOR_UDP, lw=1.8, label="Volatilidad de 12 meses")
+ax2.axhline(vol_prom, color=COLOR_TREND, ls="--", lw=1.2, label=f"Promedio: {vol_prom:.1f} pp")
+ax2.set_title("Volatilidad del dólar: desviación estándar de la variación mensual, últimos 12 meses")
+ax2.set_ylabel("Puntos porcentuales")
+ax2.legend(loc="upper left", fontsize=9)
+fig.text(0.01, -0.01, FUENTE_DOLAR + " Variación anual: consulta 4. Variación mensual: consulta 8.",
+         fontsize=8, color=COLOR_GRAY)
+fig.tight_layout()
+guardar(fig, "03_dolar_variaciones_volatilidad.png")
+
+print(f"\nVariaciones y volatilidad del dólar ({ultimo:%Y-%m}):")
+print(f"  - Variación mensual:      {dolar.loc[ultimo, 'var_mensual']:+.2f}%")
+print(f"  - Variación en 12 meses:  {var_anual_hoy:+.2f}%")
+print(f"  - Volatilidad 12 meses:   {vol_hoy:.2f} pp (promedio histórico {vol_prom:.2f} pp, percentil {pct_vol:.0f})")
+print(f"  - Mayor alza en 12 meses: {dolar['var_anual'].max():+.1f}% ({dolar['var_anual'].idxmax():%Y-%m})")
+print(f"  - Mayor baja en 12 meses: {dolar['var_anual'].min():+.1f}% ({dolar['var_anual'].idxmin():%Y-%m})")
+print(f"  - Volatilidad máxima:     {dolar['volatilidad_12m'].max():.2f} pp ({dolar['volatilidad_12m'].idxmax():%Y-%m})")

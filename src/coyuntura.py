@@ -5,6 +5,7 @@ Describe dónde está hoy el dólar frente a su historia, con las consultas
 de sql/04_consultas_coyuntura.sql (y la consulta 4 de 03_consultas_proyecto.sql):
     1. Lectura de datos desde SQL.
     2. El dólar frente a su historia (nivel, promedio y rango de 12 meses).
+    3. Dólar nominal frente a dólar real (tipo de cambio real, TCR).
 
 Los gráficos se guardan en figuras/ para usarlos en el informe.
 
@@ -105,3 +106,43 @@ print(f"  - Rango de 12 meses:      {dolar.loc[ultimo, 'min_12m']:,.1f} a {dolar
       f" (promedio {dolar.loc[ultimo, 'prom_12m']:,.1f})")
 print(f"  - Máximo histórico:       {dolar['dolar'].max():,.1f} ({fecha_max:%Y-%m})")
 print(f"  - Mínimo histórico:       {dolar['dolar'].min():,.1f} ({fecha_min:%Y-%m})")
+
+
+# ------------------------------------------------------------
+# Bloque 3: dólar nominal frente a dólar real
+# El dólar nominal sube también por la inflación: si en Chile los precios
+# suben más que en EE.UU., el peso pierde valor sin que Chile se vuelva
+# más barato para el mundo. El TCR descuenta esa diferencia de inflación:
+#     TCR = dólar x IPC EE.UU. / IPC Chile   (consulta 7)
+# Para compararlos, el dólar nominal se lleva al mismo índice que el TCR
+# (promedio 2018 = 100).
+# ------------------------------------------------------------
+tcr["dolar_indice"] = 100 * tcr["dolar"] / tcr.loc["2018", "dolar"].mean()
+
+ultimo_tcr  = tcr.index.max()
+tcr_hoy     = tcr.loc[ultimo_tcr, "tcr"]
+nominal_hoy = tcr.loc[ultimo_tcr, "dolar_indice"]
+prom_tcr    = tcr["tcr"].mean()
+pct_tcr     = (tcr["tcr"] <= tcr_hoy).mean() * 100
+
+fig, ax = plt.subplots(figsize=(11, 4.5))
+ax.plot(tcr.index, tcr["dolar_indice"], color=COLOR_GRAY, lw=1.5, label="Dólar nominal")
+ax.plot(tcr.index, tcr["tcr"], color=COLOR_UDP, lw=1.8, label="Tipo de cambio real (TCR)")
+ax.axhline(100, color="black", lw=0.8)
+ax.axhline(prom_tcr, color=COLOR_TREND, ls="--", lw=1.2,
+           label=f"Promedio del TCR {tcr.index.min():%Y}-{ultimo_tcr:%Y}: {prom_tcr:.0f}")
+ax.set_title(f"Dólar nominal y tipo de cambio real, {tcr.index.min():%Y}-{ultimo_tcr:%Y}")
+ax.set_ylabel("Índice (promedio 2018 = 100)")
+ax.legend(loc="upper left", fontsize=9)
+fig.text(0.01, -0.02, "Fuente: Banco Central de Chile (dólar observado, IPC) y FRED (IPC de EE.UU.). "
+         "TCR = dólar x IPC EE.UU. / IPC Chile.", fontsize=8, color=COLOR_GRAY)
+guardar(fig, "02_dolar_nominal_real.png")
+
+print(f"\nDólar nominal y real ({ultimo_tcr:%Y-%m}, índice 2018 = 100):")
+print(f"  - Dólar nominal:          {nominal_hoy:.1f} ({nominal_hoy - 100:+.1f}% frente a 2018)")
+print(f"  - TCR:                    {tcr_hoy:.1f} ({tcr_hoy - 100:+.1f}% frente a 2018)")
+print(f"  - Diferencia:             {nominal_hoy - tcr_hoy:.1f} puntos que explica la mayor inflación de Chile")
+print(f"  - TCR promedio histórico: {prom_tcr:.1f} (hoy {100 * (tcr_hoy / prom_tcr - 1):+.1f}% sobre el promedio)")
+print(f"  - Percentil del TCR:      {pct_tcr:.0f}")
+print(f"  - Máximo del TCR:         {tcr['tcr'].max():.1f} ({tcr['tcr'].idxmax():%Y-%m})")
+print(f"  - Mínimo del TCR:         {tcr['tcr'].min():.1f} ({tcr['tcr'].idxmin():%Y-%m})")

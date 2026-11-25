@@ -7,6 +7,7 @@ de sql/04_consultas_coyuntura.sql (y la consulta 4 de 03_consultas_proyecto.sql)
     2. El dólar frente a su historia (nivel, promedio y rango de 12 meses).
     3. Dólar nominal frente a dólar real (tipo de cambio real, TCR).
     4. Variaciones y volatilidad del dólar.
+    5. Indicadores de contexto: los que, según el Hito 1, mueven el dólar.
 
 Los gráficos se guardan en figuras/ para usarlos en el informe.
 
@@ -65,6 +66,8 @@ with engine.connect() as conn:
     tcr   = pd.read_sql(text(coyuntura[0]), conn, parse_dates=["mes"], index_col="mes")   # consulta 7
     dolar = pd.read_sql(text(coyuntura[1]), conn, parse_dates=["mes"], index_col="mes")   # consulta 8
     cambios = pd.read_sql(text(proyecto[3]), conn, parse_dates=["mes"])                    # consulta 4
+    series  = pd.read_sql(text(proyecto[2]), conn, parse_dates=["mes"])                    # consulta 3
+    tasas   = pd.read_sql(text(proyecto[5]), conn, parse_dates=["mes"], index_col="mes")   # consulta 6
 
 # Variación en 12 meses del dólar (consulta 4: variación % para el dólar)
 dolar["var_anual"] = (cambios[cambios["nombre"].str.startswith("Tipo de cambio")]
@@ -196,3 +199,82 @@ print(f"  - Volatilidad 12 meses:   {vol_hoy:.2f} pp (promedio histórico {vol_p
 print(f"  - Mayor alza en 12 meses: {dolar['var_anual'].max():+.1f}% ({dolar['var_anual'].idxmax():%Y-%m})")
 print(f"  - Mayor baja en 12 meses: {dolar['var_anual'].min():+.1f}% ({dolar['var_anual'].idxmin():%Y-%m})")
 print(f"  - Volatilidad máxima:     {dolar['volatilidad_12m'].max():.2f} pp ({dolar['volatilidad_12m'].idxmax():%Y-%m})")
+
+
+# ------------------------------------------------------------
+# Bloque 5: indicadores de contexto
+# Las variables que, según el Hito 1, mueven el dólar. Signo esperado
+# sobre el dólar: (+) lo sube (deprecia el peso), (-) lo baja.
+#   - Cobre (-): más caro, más dólares entran a Chile.
+#   - Índice dólar amplio (+): un dólar fuerte en el mundo también sube en Chile.
+#   - Diferencial TPM - Fed (-): tasas más altas en Chile atraen capitales.
+#   - VIX (+): en episodios de miedo, los inversores se refugian en el dólar.
+#   - Balanza comercial (-): más exportaciones netas, más oferta de dólares.
+#   - IED (-): más inversión extranjera, más dólares que se cambian a pesos.
+# Balanza e IED son flujos mensuales muy irregulares (un solo proyecto
+# minero mueve un mes). Por eso se muestran también como suma de 12 meses:
+# es el contraste entre los dos tratamientos de la IED.
+# ------------------------------------------------------------
+contexto = series.pivot(index="mes", columns="nombre", values="valor")
+contexto = pd.DataFrame({
+    "cobre":        contexto["Precio del cobre refinado BML"],
+    "indice_dolar": contexto["Índice dólar amplio (Fed)"],
+    "diferencial":  tasas["diferencial_tasas"],
+    "vix":          contexto["Índice de volatilidad VIX"],
+    "balanza":      contexto["Balanza comercial"],
+    "ied":          contexto["Inversión extranjera directa, pasivos (flujo)"],
+}).loc[dolar.index.min():ultimo]
+contexto["balanza_12m"] = contexto["balanza"].rolling(12).sum()
+contexto["ied_12m"]     = contexto["ied"].rolling(12).sum()
+
+# (columna, título, unidad, signo esperado sobre el dólar)
+PANELES = [
+    ("cobre",        "Precio del cobre",                    "USD por libra",           "(-)"),
+    ("indice_dolar", "Índice dólar amplio (Fed)",           "Índice ene-2006 = 100",   "(+)"),
+    ("diferencial",  "Diferencial de tasas TPM - Fed Funds", "Puntos porcentuales",     "(-)"),
+    ("vix",          "Índice de volatilidad VIX",           "Índice",                  "(+)"),
+    ("balanza",      "Balanza comercial",                   "Millones de USD",         "(-)"),
+    ("ied",          "Inversión extranjera directa (pasivos)", "Millones de USD",       "(-)"),
+]
+
+fig, axes = plt.subplots(3, 2, figsize=(13, 10), sharex=True)
+for ax, (col, titulo, unidad, signo) in zip(axes.flat, PANELES):
+    if col in ("balanza", "ied"):
+        ax.bar(contexto.index, contexto[col], width=25, color=COLOR_GRAY, alpha=0.6, label="Mensual")
+        ax2 = ax.twinx()
+        ax2.plot(contexto.index, contexto[f"{col}_12m"], color=COLOR_UDP, lw=1.8, label="Suma 12 meses (eje der.)")
+        ax2.set_ylabel("Suma 12 meses, millones de USD", fontsize=8)
+        ax2.spines["top"].set_visible(False)
+        ax2.grid(False)
+        ax.legend(loc="upper left", fontsize=8)
+        ax2.legend(loc="lower left", fontsize=8)
+    else:
+        ax.plot(contexto.index, contexto[col], color=COLOR_UDP, lw=1.6)
+        ax.axhline(contexto[col].mean(), color=COLOR_TREND, ls="--", lw=1, label="Promedio")
+        ax.legend(loc="upper left", fontsize=8)
+    if col == "diferencial":
+        ax.axhline(0, color="black", lw=0.8)
+    ax.set_title(f"{titulo}  {signo}", fontsize=11)
+    ax.set_ylabel(unidad, fontsize=9)
+fig.suptitle(f"Indicadores de contexto del dólar, {contexto.index.min():%Y}-{ultimo:%Y}"
+             "   (entre paréntesis, efecto esperado sobre el dólar)", fontsize=12)
+fig.text(0.01, -0.01, "Fuente: Banco Central de Chile (cobre, TPM, balanza comercial, IED) y FRED "
+         "(índice dólar, Fed Funds, VIX). Promedios mensuales.", fontsize=8, color=COLOR_GRAY)
+fig.tight_layout()
+guardar(fig, "04_indicadores_contexto.png")
+
+# Tabla resumen: dónde está cada indicador hoy frente a su historia
+filas = []
+for col, titulo, unidad, signo in PANELES:
+    serie = contexto[f"{col}_12m"] if col in ("balanza", "ied") else contexto[col]
+    serie = serie.dropna()
+    hoy = serie.iloc[-1]
+    filas.append({"indicador": titulo + (" (suma 12m)" if col in ("balanza", "ied") else ""),
+                  "último": round(hoy, 2),
+                  "promedio": round(serie.mean(), 2),
+                  "percentil": round((serie <= hoy).mean() * 100),
+                  "hace 12 meses": round(serie.iloc[-13], 2),
+                  "signo sobre el dólar": signo})
+resumen = pd.DataFrame(filas).set_index("indicador")
+print(f"\nIndicadores de contexto ({ultimo:%Y-%m}):")
+print(resumen.to_string())

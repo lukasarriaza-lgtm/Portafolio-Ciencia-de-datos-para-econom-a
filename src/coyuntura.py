@@ -8,6 +8,8 @@ de sql/04_consultas_coyuntura.sql (y la consulta 4 de 03_consultas_proyecto.sql)
     3. Dólar nominal frente a dólar real (tipo de cambio real, TCR).
     4. Variaciones y volatilidad del dólar.
     5. Indicadores de contexto: los que, según el Hito 1, mueven el dólar.
+    6. Estacionalidad: ¿hay que desestacionalizar el dólar? (y el Imacec, que sí).
+    7. Cuenta corriente (trimestral), como contexto externo.
 
 Los gráficos se guardan en figuras/ para usarlos en el informe.
 
@@ -20,6 +22,7 @@ matplotlib.use("Agg")              # guarda los gráficos sin abrir ventanas
 import matplotlib.pyplot as plt
 import pandas as pd
 from sqlalchemy import text
+from statsmodels.tsa.seasonal import STL, seasonal_decompose
 
 import carga_db
 import config
@@ -33,6 +36,16 @@ COLOR_UDP   = '#800020'   # serie principal
 COLOR_TREND = '#1f77b4'   # promedios y referencias
 COLOR_ALERT = '#d62728'   # alertas
 COLOR_GRAY  = '#7f7f7f'   # series de fondo
+COLOR_SA    = '#2ca02c'   # series desestacionalizadas
+
+MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+
+# Episodios que movieron el dólar (para marcarlos en los gráficos)
+EPISODIOS = {
+    "2019-10-01": "Estallido social",
+    "2020-03-01": "Pandemia",
+    "2022-07-01": "Intervención BCCh",
+}
 
 RUTA_FIGURAS = config.RAIZ / "figuras"
 RUTA_FIGURAS.mkdir(exist_ok=True)
@@ -101,6 +114,10 @@ ax.annotate(f"{ultimo:%Y-%m}: {valor_hoy:,.0f}", (ultimo, valor_hoy),
 ax.scatter([fecha_max], [dolar["dolar"].max()], color=COLOR_ALERT, zorder=5)
 ax.annotate(f"Máximo: {dolar['dolar'].max():,.0f} ({fecha_max:%Y-%m})",
             (fecha_max, dolar["dolar"].max()), xytext=(-150, 5), textcoords="offset points", fontsize=9)
+for fecha, nombre in EPISODIOS.items():
+    ax.axvline(pd.Timestamp(fecha), color=COLOR_GRAY, ls=":", lw=1)
+    ax.text(pd.Timestamp(fecha), dolar["dolar"].min(), f" {nombre}", rotation=90,
+            fontsize=8, color=COLOR_GRAY, va="bottom")
 ax.set_title(f"Tipo de cambio USD/CLP, {dolar.index.min():%Y}-{ultimo:%Y}")
 ax.set_ylabel("Pesos por dólar (CLP/USD)")
 ax.legend(loc="upper left", fontsize=9)
@@ -116,6 +133,15 @@ print(f"  - Rango de 12 meses:      {dolar.loc[ultimo, 'min_12m']:,.1f} a {dolar
       f" (promedio {dolar.loc[ultimo, 'prom_12m']:,.1f})")
 print(f"  - Máximo histórico:       {dolar['dolar'].max():,.1f} ({fecha_max:%Y-%m})")
 print(f"  - Mínimo histórico:       {dolar['dolar'].min():,.1f} ({fecha_min:%Y-%m})")
+
+# Cuánto subió el dólar en cada episodio: del mes anterior al máximo de los 3 meses siguientes
+print("\nEl dólar en cada episodio (del mes anterior al máximo de los 3 meses siguientes):")
+for fecha, nombre in EPISODIOS.items():
+    fecha = pd.Timestamp(fecha)
+    antes = dolar["dolar"].loc[:fecha - pd.DateOffset(months=1)].iloc[-1]
+    ventana = dolar["dolar"].loc[fecha:fecha + pd.DateOffset(months=3)]
+    print(f"  - {nombre:<18} ({fecha:%Y-%m}): {antes:,.0f} -> {ventana.max():,.0f} "
+          f"({100 * (ventana.max() / antes - 1):+.1f}%, máximo en {ventana.idxmax():%Y-%m})")
 
 
 # ------------------------------------------------------------
@@ -278,3 +304,90 @@ for col, titulo, unidad, signo in PANELES:
 resumen = pd.DataFrame(filas).set_index("indicador")
 print(f"\nIndicadores de contexto ({ultimo:%Y-%m}):")
 print(resumen.to_string())
+
+
+# ------------------------------------------------------------
+# Bloque 6: estacionalidad
+# La pauta pide desestacionalizar "cuando corresponda". Como en U2-04, se
+# mide el efecto calendario típico de cada mes con seasonal_decompose
+# (multiplicativo): un factor de 1,02 es "2% sobre el promedio del año".
+#   - Dólar: si el efecto de cada mes es muy chico, NO hay que desestacionalizar.
+#   - Imacec: tiene estacionalidad fuerte (diciembre alto, febrero bajo), así
+#     que se desestacionaliza con STL, como en la clase.
+# Se usa el período común (desde 2012), con años completos.
+# ------------------------------------------------------------
+imacec = series[series["nombre"] == "Imacec (índice)"].set_index("mes")["valor"].loc["2012":]
+dolar_comun = dolar["dolar"].loc["2012":]
+
+efecto = pd.DataFrame(index=MESES)
+for nombre, serie in [("Dólar", dolar_comun), ("Imacec", imacec)]:
+    factor = seasonal_decompose(serie, model="multiplicative", period=12).seasonal
+    efecto[nombre] = ((factor.groupby(factor.index.month).mean() - 1) * 100).values
+
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 4), sharey=True)
+for ax, nombre in [(ax1, "Dólar"), (ax2, "Imacec")]:
+    colores = [COLOR_SA if v > 0 else COLOR_ALERT for v in efecto[nombre]]
+    ax.bar(efecto.index, efecto[nombre], color=colores)
+    ax.axhline(0, color="black", lw=0.8)
+    ax.set_title(f"{nombre}: efecto calendario típico de cada mes")
+ax1.set_ylabel("% sobre o bajo el promedio del año")
+fig.text(0.01, -0.03, "Fuente: Banco Central de Chile. Descomposición clásica multiplicativa "
+         "(seasonal_decompose, período 12), 2012-" + f"{ultimo:%Y}.", fontsize=8, color=COLOR_GRAY)
+fig.tight_layout()
+guardar(fig, "05_estacionalidad_dolar_imacec.png")
+
+print("\nEfecto calendario típico de cada mes (% sobre o bajo el promedio del año):")
+print(efecto.round(2).T.to_string())
+print(f"  - Dólar:  el mes más alejado del promedio se aleja {efecto['Dólar'].abs().max():.1f}%, menos que "
+      f"su movimiento típico de un mes ({dolar['var_mensual'].abs().mean():.1f}%) -> no se desestacionaliza.")
+print(f"  - Imacec: de {efecto['Imacec'].min():+.1f}% a {efecto['Imacec'].max():+.1f}% -> sí se desestacionaliza.")
+
+# Imacec desestacionalizado con STL (igual que en U2-04)
+stl = STL(imacec, period=12, seasonal=13, robust=True).fit()
+imacec_sa = imacec - stl.seasonal
+
+fig, ax = plt.subplots(figsize=(11, 4))
+ax.plot(imacec.loc["2022":], color=COLOR_GRAY, marker="o", ms=3, lw=1.2, label="Original")
+ax.plot(imacec_sa.loc["2022":], color=COLOR_SA, lw=2.5, label="Desestacionalizado (STL)")
+ax.set_title("Imacec original y desestacionalizado, 2022-" + f"{imacec.index.max():%Y}")
+ax.set_ylabel("Índice 2018 = 100")
+ax.legend(loc="upper left", fontsize=9)
+fig.text(0.01, -0.02, "Fuente: Banco Central de Chile. STL (período 12, seasonal 13, robusto).",
+         fontsize=8, color=COLOR_GRAY)
+guardar(fig, "06_imacec_desestacionalizado.png")
+
+comparacion = pd.DataFrame({"m/m original (%)": imacec.pct_change() * 100,
+                            "m/m desestacionalizado (%)": imacec_sa.pct_change() * 100}).tail(6).round(2)
+comparacion.index = comparacion.index.strftime("%Y-%m")
+print("\nImacec: variación mensual original y desestacionalizada (últimos 6 meses):")
+print(comparacion.to_string())
+
+
+# ------------------------------------------------------------
+# Bloque 7: cuenta corriente (trimestral)
+# Queda fuera de la base común porque es trimestral (ver preparacion.py),
+# pero es contexto clave: un déficit significa que Chile necesita
+# financiamiento externo, y eso presiona al alza al dólar si se encarece.
+# Se muestra cada trimestre y la suma de los últimos 4 trimestres (un año).
+# ------------------------------------------------------------
+cc = series[series["nombre"] == "Cuenta corriente"].set_index("mes")["valor"]
+cc_anual = cc.rolling(4).sum()
+
+fig, ax = plt.subplots(figsize=(11, 4))
+colores = [COLOR_SA if v >= 0 else COLOR_ALERT for v in cc]
+ax.bar(cc.index, cc, width=70, color=colores, alpha=0.7, label="Trimestral")
+ax.plot(cc_anual.index, cc_anual, color=COLOR_UDP, lw=2, label="Suma de 4 trimestres")
+ax.axhline(0, color="black", lw=0.8)
+ax.set_title(f"Cuenta corriente de Chile, {cc.index.min():%Y}-{cc.index.max():%Y}")
+ax.set_ylabel("Millones de USD")
+ax.legend(loc="lower left", fontsize=9)
+fig.text(0.01, -0.02, "Fuente: Banco Central de Chile, balanza de pagos. Verde: superávit. Rojo: déficit.",
+         fontsize=8, color=COLOR_GRAY)
+guardar(fig, "07_cuenta_corriente.png")
+
+trimestre = f"{cc.index.max().year}-T{(cc.index.max().month - 1) // 3 + 1}"
+print(f"\nCuenta corriente (último trimestre: {trimestre}):")
+print(f"  - Último trimestre:       {cc.iloc[-1]:,.0f} millones de USD")
+print(f"  - Suma de 4 trimestres:   {cc_anual.iloc[-1]:,.0f} millones de USD "
+      f"(hace un año: {cc_anual.iloc[-5]:,.0f})")
+print(f"  - Promedio anual {cc.index.min():%Y}-{cc.index.max():%Y}: {cc_anual.mean():,.0f} millones de USD")

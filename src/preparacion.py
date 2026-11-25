@@ -43,7 +43,7 @@ NOMBRES = {
     "F034.ECUM.FLU.COCHILCO.Z.0.M": "export_cobre_ton",
     "F068.A.FLU.Z.0.S.N.Z.Z.Z.Z.6.0.T": "cuenta_corriente",
     "F068.B1.VAR.T0.0.S.N.Z.Z.Z.Z.6.0.M": "balanza_comercial",
-    "F068.T6.STO.Z.IED.S.P.Z.T.Z.Z.6.0.M": "ied",
+    "F068.G1.FLU.Z.0.S.P.Z.T.Z.Z.6.0.M": "ied",
     "F051.BT02.FLU.C.D.CLP.M": "ingresos_fiscales",
     "F051.BT03.FLU.C.D.CLP.M": "gastos_fiscales",
     "FEDFUNDS": "fed_funds",

@@ -7,6 +7,8 @@ fuera de muestra en evaluacion.py:
     2. Estacionariedad (ADF): por qué se modela la variación y no el nivel (U2-03).
     3. ACF y PACF: cuánta memoria tiene el dólar (U2-03, U4-02).
     4. ARIMA: orden elegido por AIC y BIC, diagnóstico con Ljung-Box (U2-03).
+    5. MCO con predictores rezagados y errores HAC (camino econométrico, U2-05).
+    6. Lasso con todas las variables y sus rezagos (camino de ciencia de datos, U4-03).
 
 Requisito: haber corrido antes preparacion.py.
 Uso desde la raíz del repositorio:
@@ -20,12 +22,19 @@ matplotlib.use("Agg")              # guarda los gráficos sin abrir ventanas
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import statsmodels.api as sm
+from sklearn.linear_model import LassoCV
+from sklearn.model_selection import TimeSeriesSplit
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 from statsmodels.stats.diagnostic import acorr_ljungbox
 from statsmodels.tsa.arima.model import ARIMA
 from statsmodels.tsa.stattools import adfuller
 
 import config
+import predictores
+
 
 warnings.filterwarnings("ignore")  # avisos de convergencia de ARIMA
 
@@ -153,3 +162,69 @@ if (lb["lb_pvalue"] > 0.05).all():
     print("-> p > 0,05: residuos compatibles con ruido blanco (no queda memoria sin capturar).")
 else:
     print("-> Hay estructura no capturada en algún rezago: revisar la especificación.")
+
+
+
+# ------------------------------------------------------------
+# Bloque 5: MCO con predictores rezagados (camino econométrico, U2-05)
+# Variables elegidas ANTES de estimar, con las relaciones y la teoría:
+# el dólar del mes anterior, la balanza y el cobre del mes anterior y el
+# bono de EE.UU. a 10 años de hace 6 meses (ver predictores.py).
+# Errores estándar HAC (Newey-West): corrigen la autocorrelación y la
+# heterocedasticidad de los residuos, para no confiar en p-values inflados.
+# ------------------------------------------------------------
+datos = predictores.transformar(base)
+X_mco = predictores.matriz_mco(datos)
+tabla_mco = pd.concat([datos["dolar"], X_mco], axis=1).dropna().loc[:FIN_ENTRENAMIENTO]
+
+mco = sm.OLS(tabla_mco["dolar"], sm.add_constant(tabla_mco[X_mco.columns])).fit(
+    cov_type="HAC", cov_kwds={"maxlags": 12})        # 12 rezagos: un año de datos mensuales
+
+resumen_mco = pd.DataFrame({
+    "coeficiente": mco.params.round(4),
+    "p-value (HAC)": mco.pvalues.round(3),
+    "signo esperado": ["", *[s for _, _, s in predictores.VARIABLES_MCO.values()]],
+})
+resumen_mco["cumple signo"] = [
+    "" if s == "" else ("sí" if np.sign(c) == (1 if s == "+" else -1) else "no")
+    for c, s in zip(resumen_mco["coeficiente"], resumen_mco["signo esperado"])]
+print(f"\nMCO con predictores rezagados (entrenamiento: {tabla_mco.index.min():%Y-%m} a "
+      f"{tabla_mco.index.max():%Y-%m}, {len(tabla_mco)} meses):")
+print(resumen_mco.to_string())
+print(f"  R² dentro de muestra: {mco.rsquared:.3f}   R² ajustado: {mco.rsquared_adj:.3f}")
+print("  Ojo: un R² dentro de muestra no dice si el modelo pronostica bien; eso lo decide "
+      "la evaluación fuera de muestra (evaluacion.py).")
+
+
+# ------------------------------------------------------------
+# Bloque 6: Lasso con todas las variables (camino de ciencia de datos, U4-03)
+# 14 variables x 6 rezagos = 84 predictores. Lasso deja en cero los que no
+# ayudan a pronosticar. La penalización (lambda) se elige con validación
+# cruzada temporal (TimeSeriesSplit): nunca se valida con meses anteriores
+# a los de entrenamiento. El Pipeline estandariza dentro de cada partición,
+# para no usar la media ni la varianza del futuro (U4-03, U4-05).
+# Un coeficiente cero no significa que la variable no importe: otra variable
+# parecida puede estar haciendo ese trabajo (U4-03).
+# ------------------------------------------------------------
+X_lasso = predictores.matriz_lasso(datos)
+tabla_lasso = pd.concat([datos["dolar"], X_lasso], axis=1).dropna().loc[:FIN_ENTRENAMIENTO]
+
+grilla = np.logspace(-3, 2, 50)                   # misma grilla de lambdas que en U4-03
+lasso = make_pipeline(StandardScaler(),
+                      LassoCV(alphas=grilla, cv=TimeSeriesSplit(n_splits=5), max_iter=20000))
+lasso.fit(tabla_lasso[X_lasso.columns], tabla_lasso["dolar"])
+
+modelo_lasso = lasso[-1]
+coefs = pd.Series(modelo_lasso.coef_, index=X_lasso.columns)
+activos = coefs[coefs != 0].sort_values(key=abs, ascending=False)
+
+print(f"\nLasso (entrenamiento: {tabla_lasso.index.min():%Y-%m} a {tabla_lasso.index.max():%Y-%m}, "
+      f"{len(tabla_lasso)} meses, {X_lasso.shape[1]} predictores):")
+print(f"  Lambda elegido por validación temporal: {modelo_lasso.alpha_:.4f}")
+print(f"  Variables activas (coeficiente distinto de cero): {len(activos)} de {X_lasso.shape[1]}")
+if activos.empty:
+    print("  -> Lasso deja todo en cero: con estos datos, ninguna variable mejora el pronóstico "
+          "frente a la media. Coherente con un dólar sin memoria.")
+else:
+    print("  Coeficientes (en desviaciones estándar del predictor), de mayor a menor efecto:")
+    print(activos.round(4).to_string())

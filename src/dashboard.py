@@ -11,7 +11,7 @@ Junta en una sola imagen lo que un comité necesita ver en pocos segundos:
 
 La historia del dólar se lee directamente de la base SQL (consulta 8 de
 sql/04_consultas_coyuntura.sql). Los pronósticos los generan evaluacion.py y
-proyeccion.py, que los guardan en data/: no hay archivos editados a mano.
+proyeccion.py, que los guardan en resultados/: no hay archivos editados a mano.
 
 Requisito: haber corrido antes evaluacion.py y proyeccion.py.
 Uso desde la raíz del repositorio:
@@ -38,7 +38,7 @@ COLOR_LASSO = '#2ca02c'
 
 RUTA_FIGURAS = config.RAIZ / "figuras"
 RUTA_FIGURAS.mkdir(exist_ok=True)
-
+RUTA_RESULTADOS = config.RAIZ / "resultados"     # pronósticos de evaluacion.py y proyeccion.py
 
 def leer_consultas(ruta):
     """Lee un archivo .sql y devuelve la lista de consultas (separadas por ';')."""
@@ -63,10 +63,10 @@ with engine.connect() as conn:
     dolar = pd.read_sql(text(consultas[1]), conn, parse_dates=["mes"], index_col="mes")   # consulta 8
 
 dolar = dolar.loc[:"2026-09"]                       # misma fecha de corte que la carga
-proyeccion = pd.read_csv(config.RUTA_DATOS / "proyeccion.csv", index_col=0, parse_dates=True)
-pronosticos = pd.read_csv(config.RUTA_DATOS / "pronosticos_fuera_muestra.csv",
+proyeccion = pd.read_csv(RUTA_RESULTADOS / "proyeccion.csv", index_col=0, parse_dates=True)
+pronosticos = pd.read_csv(RUTA_RESULTADOS / "pronosticos_fuera_muestra.csv",
                           index_col=0, parse_dates=True)
-metricas = pd.read_csv(config.RUTA_DATOS / "metricas_fuera_muestra.csv", index_col=0)
+metricas = pd.read_csv(RUTA_RESULTADOS / "metricas_fuera_muestra.csv", index_col=0)
 
 ultimo_mes = dolar.index[-1]
 dolar_hoy = dolar["dolar"].iloc[-1]

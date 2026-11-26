@@ -229,8 +229,11 @@ guardar(fig, "11_pronosticos_fuera_muestra.png")
 
 # ------------------------------------------------------------
 # Bloque 6: guardar los pronósticos y las métricas para el dashboard
-# Se guardan en data/ (no se suben a GitHub: se regeneran con el código).
+# Se guardan en resultados/ (junto a los .txt), para que se vean en GitHub
+# sin correr el código. Son resultados chicos; los datos crudos siguen en data/.
 # ------------------------------------------------------------
-pronosticos.to_csv(config.RUTA_DATOS / "pronosticos_fuera_muestra.csv")
-tabla_metricas.to_csv(config.RUTA_DATOS / "metricas_fuera_muestra.csv")
-print("  Pronósticos y métricas guardados en data/ (los usa dashboard.py)")
+RUTA_RESULTADOS = config.RAIZ / "resultados"
+RUTA_RESULTADOS.mkdir(exist_ok=True)
+pronosticos.to_csv(RUTA_RESULTADOS / "pronosticos_fuera_muestra.csv")
+tabla_metricas.to_csv(RUTA_RESULTADOS / "metricas_fuera_muestra.csv")
+print("  Pronósticos y métricas guardados en resultados/ (los usa dashboard.py)")

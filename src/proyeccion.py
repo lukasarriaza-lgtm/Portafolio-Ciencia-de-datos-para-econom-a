@@ -180,10 +180,12 @@ fig.text(0.01, -0.03, "Proyección: ARIMA(0,1,0) sobre el log del dólar, muestr
 fig.tight_layout()
 guardar(fig, "12_proyeccion_dolar.png")
 
-
 # ------------------------------------------------------------
 # Bloque 6: guardar la proyección para el dashboard
-# Se guarda en data/ (no se sube a GitHub: se regenera con el código).
+# Se guarda en resultados/ (junto a los .txt), para que se vea en GitHub
+# sin correr el código. Es un resultado chico; los datos crudos siguen en data/.
 # ------------------------------------------------------------
-proyeccion.to_csv(config.RUTA_DATOS / "proyeccion.csv")
-print("  Proyección guardada en data/proyeccion.csv (la usa dashboard.py)")
+RUTA_RESULTADOS = config.RAIZ / "resultados"
+RUTA_RESULTADOS.mkdir(exist_ok=True)
+proyeccion.to_csv(RUTA_RESULTADOS / "proyeccion.csv")
+print("  Proyección guardada en resultados/proyeccion.csv (la usa dashboard.py)")

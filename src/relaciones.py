@@ -196,20 +196,27 @@ print(resumen.drop(columns="mecanismo").to_string())
 mismo_mes_sig = resumen[resumen["r mismo mes"].abs() > umbral].index.tolist()
 print(f"\nSe mueven con el dólar en el mismo mes (significativas): {', '.join(mismo_mes_sig)}")
 
-# Cuidado con las comparaciones múltiples: con muchas pruebas, algunas salen
-# "significativas" por azar. Por eso una correlación rezagada solo se toma en
-# cuenta si además tiene el signo que predice el mecanismo económico.
+# Más candidatos, más oportunidades de engañarse con el ruido (U4-05): con
+# muchas pruebas, algunas salen "significativas" por azar. Por eso se usan dos
+# caminos, como en la clase:
+#   - Camino econométrico (MCO): solo las que anticipan al dólar con el signo
+#     que predice el mecanismo económico.
+#   - Camino de ciencia de datos (Lasso): todas las variables; Lasso decide.
+# La evaluación fuera de muestra decide cuál pronostica mejor.
 n_pruebas = len(CANDIDATAS) * MAX_REZAGO
 print(f"\nOjo: se hicieron {n_pruebas} pruebas con rezagos; al 95% se esperan unas "
       f"{0.05 * n_pruebas:.0f} 'significativas' solo por azar.")
 anticipan = resumen[resumen["anticipa (signif.)"] == "sí"]
 candidatas = anticipan[anticipan["signo ok en rezago"] == "sí"]
 descartadas = anticipan[anticipan["signo ok en rezago"] == "no"]
-print("Anticipan al dólar con el signo esperado (candidatas para los modelos):")
+print("Candidatas para el camino econométrico (MCO): anticipan al dólar con el signo esperado:")
 for nombre, fila in candidatas.iterrows():
     print(f"  - {nombre}: rezago {fila['mejor rezago']}, r = {fila['r en ese rezago']:+.2f} ({fila['mecanismo']})")
 if candidatas.empty:
     print("  - Ninguna: el pasado anticipa poco al dólar (típico de un mercado cambiario).")
-print("Significativas pero con el signo contrario al esperado (probable azar, no se usan):")
+print("Significativas pero con el signo contrario al esperado (sin mecanismo, no entran al MCO):")
 for nombre, fila in descartadas.iterrows():
     print(f"  - {nombre}: rezago {fila['mejor rezago']}, r = {fila['r en ese rezago']:+.2f}")
+print("Todas las variables (incluidas estas) entran al camino de ciencia de datos (Lasso), "
+      "que decide con los datos. Un coeficiente cero en Lasso no significa que la variable "
+      "no importe (U4-03).")

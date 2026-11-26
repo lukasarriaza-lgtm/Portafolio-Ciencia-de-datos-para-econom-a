@@ -30,3 +30,4 @@ AR(1)                  1.061             0.953             1.047
 MCO                    0.994             1.009             1.038
 Lasso                  1.069             0.927             0.948
   Gráfico guardado: figuras/11_pronosticos_fuera_muestra.png
+  Pronósticos y métricas guardados en data/ (los usa dashboard.py)

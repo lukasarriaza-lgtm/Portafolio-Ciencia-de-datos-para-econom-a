@@ -1,0 +1,2 @@
+Dólar desde SQL: 2010-01 a 2026-09 | proyección hasta 2028-09
+  Dashboard guardado: figuras/13_dashboard.png

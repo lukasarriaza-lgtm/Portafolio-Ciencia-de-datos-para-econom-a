@@ -224,3 +224,13 @@ fig.text(0.01, -0.03, "Walk-forward con ventana expansiva desde 2012. "
          fontsize=8, color=COLOR_GRAY)
 fig.tight_layout()
 guardar(fig, "11_pronosticos_fuera_muestra.png")
+
+
+
+# ------------------------------------------------------------
+# Bloque 6: guardar los pronósticos y las métricas para el dashboard
+# Se guardan en data/ (no se suben a GitHub: se regeneran con el código).
+# ------------------------------------------------------------
+pronosticos.to_csv(config.RUTA_DATOS / "pronosticos_fuera_muestra.csv")
+tabla_metricas.to_csv(config.RUTA_DATOS / "metricas_fuera_muestra.csv")
+print("  Pronósticos y métricas guardados en data/ (los usa dashboard.py)")

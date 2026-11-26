@@ -1,0 +1,70 @@
+Dólar mensual: 2010-01 a 2026-09 (201 meses)
+  Gráfico guardado: figuras/01_dolar_historia.png
+
+El dólar frente a su historia (2026-09):
+  - Último dato:            947.3 CLP/USD
+  - Promedio histórico:     699.0 (+35.5% sobre el promedio)
+  - Percentil histórico:    93 (el dólar estuvo más bajo en el 93% de los meses)
+  - Rango de 12 meses:      862.0 a 954.0 (promedio 913.0)
+  - Máximo histórico:       1,000.8 (2025-01)
+  - Mínimo histórico:       462.9 (2011-07)
+
+El dólar en cada episodio (del mes anterior al máximo de los 3 meses siguientes):
+  - Estallido social   (2019-10): 718 -> 777 (+8.1%, máximo en 2019-11)
+  - Pandemia           (2020-03): 796 -> 853 (+7.2%, máximo en 2020-04)
+  - Intervención BCCh  (2022-07): 858 -> 956 (+11.4%, máximo en 2022-10)
+  Gráfico guardado: figuras/02_dolar_nominal_real.png
+
+Dólar nominal y real (2026-09, índice 2018 = 100):
+  - Dólar nominal:          147.7 (+47.7% frente a 2018)
+  - TCR:                    130.9 (+30.9% frente a 2018)
+  - Diferencia:             16.9 puntos que explica la mayor inflación de Chile
+  - TCR promedio histórico: 107.4 (hoy +21.9% sobre el promedio)
+  - Percentil del TCR:      91
+  - Máximo del TCR:         140.3 (2022-07)
+  - Mínimo del TCR:         80.6 (2011-07)
+  Gráfico guardado: figuras/03_dolar_variaciones_volatilidad.png
+
+Variaciones y volatilidad del dólar (2026-09):
+  - Variación mensual:      +3.23%
+  - Variación en 12 meses:  -1.36%
+  - Volatilidad 12 meses:   2.72 pp (promedio histórico 2.50 pp, percentil 72)
+  - Mayor alza en 12 meses: +27.9% (2020-04)
+  - Mayor baja en 12 meses: -17.1% (2021-04)
+  - Volatilidad máxima:     4.99 pp (2023-03)
+  Gráfico guardado: figuras/04_indicadores_contexto.png
+
+Indicadores de contexto (2026-09):
+                                                     último  promedio  percentil  hace 12 meses signo sobre el dólar
+indicador                                                                                                           
+Precio del cobre                                       6.57      3.51        100           4.51                  (-)
+Índice dólar amplio (Fed)                            119.22    109.29         75         120.03                  (+)
+Diferencial de tasas TPM - Fed Funds                   0.75      2.64         31           0.53                  (-)
+Índice de volatilidad VIX                             15.78     18.39         39          15.79                  (+)
+Balanza comercial (suma 12m)                       36878.17  10085.89        100       19998.86                  (-)
+Inversión extranjera directa (pasivos) (suma 12m)  18606.13  16831.06         63       12850.68                  (-)
+  Gráfico guardado: figuras/05_estacionalidad_dolar_imacec.png
+
+Efecto calendario típico de cada mes (% sobre o bajo el promedio del año):
+         Ene   Feb   Mar   Abr   May   Jun   Jul   Ago   Sep   Oct   Nov   Dic
+Dólar  -0.09 -1.14 -0.52 -1.31 -1.32 -1.09  0.05  0.77  0.86  1.36  1.43  1.01
+Imacec -1.84 -6.25  5.77  0.61  0.38 -2.74 -5.69 -1.41 -3.88  0.89  4.23  9.93
+  - Dólar:  el mes más alejado del promedio se aleja 1.4%, menos que su movimiento típico de un mes (2.0%) -> no se desestacionaliza.
+  - Imacec: de -6.2% a +9.9% -> sí se desestacionaliza.
+  Gráfico guardado: figuras/06_imacec_desestacionalizado.png
+
+Imacec: variación mensual original y desestacionalizada (últimos 6 meses):
+         m/m original (%)  m/m desestacionalizado (%)
+mes                                                  
+2026-04             -4.74                        0.31
+2026-05             -2.22                       -0.93
+2026-06             -1.10                        0.30
+2026-07             -3.97                       -0.72
+2026-08              2.09                       -0.19
+2026-09              0.94                        0.93
+  Gráfico guardado: figuras/07_cuenta_corriente.png
+
+Cuenta corriente (último trimestre: 2026-T3):
+  - Último trimestre:       -2,227 millones de USD
+  - Suma de 4 trimestres:   2,834 millones de USD (hace un año: -6,901)
+  - Promedio anual 2010-2026: -10,433 millones de USD

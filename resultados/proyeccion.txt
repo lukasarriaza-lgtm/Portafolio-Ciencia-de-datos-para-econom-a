@@ -1,0 +1,18 @@
+Dólar observado: 2012-01 a 2026-09 (177 meses)
+Último dato (2026-09): 947.3 pesos por dólar
+
+ARIMA(0,1,0): volatilidad mensual estimada = 2.63% (a 24 meses: 12.9%)
+Deriva histórica: +0.36% mensual
+
+Proyección del dólar (pesos por dólar):
+         central  inf_95  inf_80  sup_80  sup_95  con_deriva
+2026-12    947.0   866.0   894.0  1004.0  1036.0       958.0
+2027-06    947.0   812.0   856.0  1048.0  1106.0       979.0
+2027-12    947.0   776.0   831.0  1079.0  1157.0      1000.0
+2028-06    947.0   748.0   812.0  1106.0  1200.0      1022.0
+2028-09    947.0   736.0   803.0  1117.0  1219.0      1033.0
+  central: paseo aleatorio | inf/sup_80 y inf/sup_95: bandas de 80% y 95% | con_deriva: escenario con la tendencia histórica
+
+Señal de Lasso para 2026-10: variación de -0.22% (dólar ≈ 945)
+  Banda de 80% del paseo aleatorio para ese mes: 916 a 980 -> la señal queda dentro: es un sesgo, no un cambio de escenario.
+  Gráfico guardado: figuras/12_proyeccion_dolar.png

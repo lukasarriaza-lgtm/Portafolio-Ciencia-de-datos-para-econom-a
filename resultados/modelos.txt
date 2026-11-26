@@ -1,0 +1,56 @@
+Variable objetivo: variación % mensual del dólar (176 meses)
+  - Entrenamiento: 2012-02 a 2021-12 (119 meses)
+  - Evaluación:    2022-01 a 2026-09 (57 meses)
+
+Test ADF (entrenamiento):
+  Dólar en nivel (log)             estadístico =  -0.872   p-value = 0.797   -> NO ESTACIONARIA (no rechaza H0)
+  Variación mensual del dólar      estadístico =  -8.857   p-value = < 0.001   -> ESTACIONARIA (rechaza H0)
+  Gráfico guardado: figuras/10_acf_pacf_dolar.png
+
+Autocorrelación de la variación del dólar (entrenamiento):
+  rezago 1: +0.20   rezago 2: +0.04   rezago 3: -0.00   rezago 12: -0.00
+
+Modelos ARIMA candidatos (entrenamiento), ordenados por AIC:
+       orden  p  q    AIC    BIC
+ARIMA(1,0,0)  1  0 533.68 542.01
+ARIMA(0,0,1)  0  1 533.84 542.17
+ARIMA(0,0,2)  0  2 535.66 546.78
+ARIMA(1,0,1)  1  1 535.67 546.79
+ARIMA(2,0,0)  2  0 535.67 546.79
+ARIMA(0,0,0)  0  0 536.37 541.92
+ARIMA(2,0,2)  2  2 537.44 554.11
+ARIMA(1,0,2)  1  2 537.66 551.56
+ARIMA(2,0,1)  2  1 537.67 551.57
+
+Mejor por AIC: ARIMA(1,0,0)   Mejor por BIC: ARIMA(0,0,0)
+
+AR(1): phi_1 = 0.202 (p-value 0.060)
+ARIMA(1,0,0) elegido por AIC, coeficientes:
+const    0.442
+ar.L1    0.202
+
+Test de Ljung-Box sobre los residuos del ARIMA(1,0,0):
+    lb_stat  lb_pvalue
+6    2.8038     0.8330
+12   8.3447     0.7576
+-> p > 0,05: residuos compatibles con ruido blanco (no queda memoria sin capturar).
+
+MCO con predictores rezagados (entrenamiento: 2012-08 a 2021-12, 113 meses):
+            coeficiente  p-value (HAC) signo esperado cumple signo
+const            0.9691          0.006                            
+dolar_l1         0.0660          0.488              +           sí
+balanza_l1      -0.0009          0.011              -           sí
+cobre_l1        -0.0653          0.085              -           sí
+ust10_l6         0.5537          0.610              +           sí
+  R² dentro de muestra: 0.136   R² ajustado: 0.104
+  Ojo: un R² dentro de muestra no dice si el modelo pronostica bien; eso lo decide la evaluación fuera de muestra (evaluacion.py).
+
+Lasso (entrenamiento: 2013-07 a 2021-12, 102 meses, 84 predictores):
+  Lambda elegido por validación temporal: 0.4498
+  Variables activas (coeficiente distinto de cero): 5 de 84
+  Coeficientes (en desviaciones estándar del predictor), de mayor a menor efecto:
+balanza_l1        -0.4024
+imacec_12m_l2      0.1554
+inflacion_cl_l5    0.0876
+gpr_l6             0.0140
+ied_l4             0.0025

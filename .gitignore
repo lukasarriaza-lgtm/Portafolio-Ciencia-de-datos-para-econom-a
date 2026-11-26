@@ -8,3 +8,4 @@ data/*.db
 data/*.csv
 !data/.gitkeep
 data/*.parquet
+.DS_Store

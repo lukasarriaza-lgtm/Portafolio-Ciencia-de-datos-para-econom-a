@@ -179,3 +179,11 @@ fig.text(0.01, -0.03, "Proyección: ARIMA(0,1,0) sobre el log del dólar, muestr
          "Fuente: Banco Central de Chile y elaboración propia.", fontsize=8, color=COLOR_GRAY)
 fig.tight_layout()
 guardar(fig, "12_proyeccion_dolar.png")
+
+
+# ------------------------------------------------------------
+# Bloque 6: guardar la proyección para el dashboard
+# Se guarda en data/ (no se sube a GitHub: se regenera con el código).
+# ------------------------------------------------------------
+proyeccion.to_csv(config.RUTA_DATOS / "proyeccion.csv")
+print("  Proyección guardada en data/proyeccion.csv (la usa dashboard.py)")

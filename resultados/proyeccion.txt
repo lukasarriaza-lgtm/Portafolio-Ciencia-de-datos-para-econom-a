@@ -16,3 +16,4 @@ Proyección del dólar (pesos por dólar):
 Señal de Lasso para 2026-10: variación de -0.22% (dólar ≈ 945)
   Banda de 80% del paseo aleatorio para ese mes: 916 a 980 -> la señal queda dentro: es un sesgo, no un cambio de escenario.
   Gráfico guardado: figuras/12_proyeccion_dolar.png
+  Proyección guardada en data/proyeccion.csv (la usa dashboard.py)

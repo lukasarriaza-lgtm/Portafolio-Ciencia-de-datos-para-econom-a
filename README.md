@@ -51,6 +51,7 @@ python src/relaciones.py                    # Hito 3: correlaciones y rezagos (f
 python src/modelos.py                       # Hito 3: ADF, ARIMA, MCO y Lasso (figura 10)
 python src/evaluacion.py                    # Hito 3: evaluación fuera de muestra (figura 11)
 python src/proyeccion.py                    # Hito 3: proyección a 24 meses (figura 12)
+python src/dashboard.py                     # Hito 3: dashboard en una imagen (figura 13)
 ```
 
 **Fecha de corte: 30 de septiembre de 2026.** Fijarla hace que todos los integrantes obtengan exactamente la misma base, aunque corran la carga en días distintos.
@@ -58,6 +59,8 @@ python src/proyeccion.py                    # Hito 3: proyección a 24 meses (fi
 1. `carga_db.py` descarga las 17 series desde las APIs y las carga en `data/coyuntura.db`. Debe terminar con 17 líneas `[OK]` y ninguna `[ERROR]`.
 2. `preparacion.py` lee la base mediante las consultas de `sql/03_consultas_proyecto.sql`, revisa las series y guarda la base mensual preparada en `data/base_mensual.parquet`.
 3. Los scripts del Hito 3 leen la base preparada (y `coyuntura.py` también las consultas de `sql/04_consultas_coyuntura.sql`) y guardan sus gráficos en `figuras/`.
+4. `evaluacion.py` y `proyeccion.py` guardan sus pronósticos, métricas y proyección en `resultados/` (archivos `.csv`). `dashboard.py` los lee desde ahí, por lo que debe correrse después de ambos.
+5. La salida de consola de cada script está guardada en `resultados/*.txt`. Para regenerarla: `python src/modelos.py > resultados/modelos.txt` (en Windows, ejecutar antes `export PYTHONUTF8=1` para conservar las tildes).
 
 **Verificación de datos reales.** La base debe cargarse sin la opción `--demo`. Si la TPM aparece con valores cercanos o superiores a 100, la base contiene datos sintéticos del modo demo: borrar `data/coyuntura.db` y volver a correr la carga.
 
@@ -80,16 +83,18 @@ La carpeta `data/` (base de datos y archivos Parquet) existe solo en el computad
 │   ├── predictores.py             <- transformaciones y predictores compartidos por los modelos
 │   ├── modelos.py                 <- ADF, ACF/PACF, ARIMA, MCO con errores HAC y Lasso
 │   ├── evaluacion.py              <- walk-forward, RMSE, MAE, R² fuera de muestra y Clark-West
-│   └── proyeccion.py              <- proyección a 24 meses con bandas de incertidumbre
+│   ├── proyeccion.py              <- proyección a 24 meses con bandas de incertidumbre
+│   └── dashboard.py               <- dashboard: historia, indicador, evaluación y proyección
 ├── sql/
 │   ├── 01_esquema.sql             <- estructura de la base (3 tablas)
 │   ├── 03_consultas_proyecto.sql  <- consultas del Hito 2 (1 a 6)
 │   └── 04_consultas_coyuntura.sql <- consultas del Hito 3 (7 y 8)
-├── figuras/                       <- gráficos generados por los scripts (01 a 12)
+├── figuras/                       <- gráficos generados por los scripts (01 a 13; 13 = dashboard)
+├── resultados/                    <- salidas de los scripts (.txt) y pronósticos, métricas y proyección (.csv)
 └── data/                          <- base local (no se sube a GitHub)
 ```
 
-El proyecto parte del kit de inicio del curso. Sobre el kit se agregaron: el catálogo propio de series, la fuente externa GPR (`extraccion.py` y `carga_db.py`), el tema Fiscal en el esquema, las consultas propias y los scripts de preparación, análisis, modelos, evaluación y proyección.
+El proyecto parte del kit de inicio del curso. Sobre el kit se agregaron: el catálogo propio de series, la fuente externa GPR (`extraccion.py` y `carga_db.py`), el tema Fiscal en el esquema, las consultas propias y los scripts de preparación, análisis, modelos, evaluación, proyección y dashboard.
 
 ## 6. Catálogo de series
 
@@ -196,6 +201,10 @@ Lasso es el único modelo que mejora al paseo aleatorio, pero la mejora no es si
 | 2026-12 | 947 | 894 – 1.004 | 866 – 1.036 | 958 |
 | 2027-12 | 947 | 831 – 1.079 | 776 – 1.157 | 1.000 |
 | 2028-09 | 947 | 803 – 1.117 | 736 – 1.219 | 1.033 |
+
+**Dashboard (`dashboard.py`).** Figura 13: dólar con su historia y el último dato destacado, variación en 12 meses, pronósticos fuera de muestra frente al paseo aleatorio, tabla de métricas y proyección con bandas de 80% y 95%. La historia del dólar se lee directamente de la base SQL (consulta 8).
+
+**Reproducibilidad.** El pipeline completo se ejecutó en macOS y en Windows con la misma fecha de corte y entregó cifras idénticas.
 
 ## 11. Limitaciones
 

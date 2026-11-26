@@ -1,0 +1,35 @@
+Variable objetivo: variación % mensual del dólar, 2012-02 a 2026-09 (176 meses)
+Umbral de significancia (95%): |correlación| > 0.15
+  Gráfico guardado: figuras/08_correlaciones_mismo_mes.png
+  Gráfico guardado: figuras/09_mapa_calor_rezagos.png
+
+Autocorrelación del dólar: rezago 1 = 0.13 (no significativa)
+
+Resumen de relaciones (variación mensual del dólar):
+                      signo esperado  r mismo mes cumple signo  mejor rezago  r en ese rezago anticipa (signif.) signo ok en rezago
+variable                                                                                                                           
+Cobre                              -        -0.62           sí             1            -0.15                 sí                 sí
+Índice dólar amplio                +         0.66           sí             3            -0.15                 no                 no
+Diferencial TPM - Fed              -         0.05           no             3             0.18                 sí                 no
+TPM                                -        -0.03           sí             3             0.12                 no                 no
+Fed Funds                          +        -0.14           no             6            -0.13                 no                 no
+Bono EE.UU. 10 años                +         0.09           sí             6             0.16                 sí                 sí
+VIX                                +         0.30           sí             2            -0.14                 no                 no
+Riesgo geopolítico                 +        -0.01           no             6             0.12                 no                 sí
+Inflación Chile                    +         0.14           sí             7            -0.12                 no                 no
+Imacec (12 meses)                  -         0.15           no             1             0.21                 sí                 no
+Balanza comercial                  -        -0.19           sí             1            -0.26                 sí                 sí
+IED (flujo mensual)                -        -0.02           sí            12             0.15                 no                 no
+IED (suma 12 meses)                -         0.06           no             4             0.13                 no                 no
+
+Se mueven con el dólar en el mismo mes (significativas): Cobre, Índice dólar amplio, VIX, Balanza comercial
+
+Ojo: se hicieron 156 pruebas con rezagos; al 95% se esperan unas 8 'significativas' solo por azar.
+Candidatas para el camino econométrico (MCO): anticipan al dólar con el signo esperado:
+  - Cobre: rezago 1, r = -0.15 (Más dólares por exportaciones)
+  - Bono EE.UU. 10 años: rezago 6, r = +0.16 (Tasas largas en EE.UU.)
+  - Balanza comercial: rezago 1, r = -0.26 (Oferta de dólares)
+Significativas pero con el signo contrario al esperado (sin mecanismo, no entran al MCO):
+  - Diferencial TPM - Fed: rezago 3, r = +0.18
+  - Imacec (12 meses): rezago 1, r = +0.21
+Todas las variables (incluidas estas) entran al camino de ciencia de datos (Lasso), que decide con los datos. Un coeficiente cero en Lasso no significa que la variable no importe (U4-03).
